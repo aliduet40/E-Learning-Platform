@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import CurriculumBuilder from '../../components/course/CurriculumBuilder';
+import { Upload, ChevronRight, Check, Layout, BookOpen, Save, Globe, DollarSign, Tag, Clock, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import * as categoryApi from '../../api/categories.api';
+import { createCourse } from '../../api/courses.api';
+
+const CourseCreate = () => {
+    const [activeStep, setActiveStep] = useState(1);
+    const [categories, setCategories] = useState([]);
+    const [courseData, setCourseData] = useState({
+        title: '',
+        slug: '',
+        description: '',
+        category_id: '',
+        level: 'beginner',
+        price: '',
+        status: 'draft',
+        total_duration: '',
+        thumbnail: ''
+    });
+    const [sections, setSections] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' });
+    const navigate = useNavigate();
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setCourseData(prev => {
+            const newData = { ...prev, [name]: value };
+
+            // Auto-generate slug from title
+            if (name === 'title') {
+                newData.slug = value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+
+            return newData;
+        });
+    };
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await categoryApi.getCategories();
+                if (response.data && response.data.data) {
+                    setCategories(response.data.data);
+                } else {
+                    // Fallback categories for UI demo if API fails
+                    setCategories([
+                        { id: 1, name: 'Web Development' },
+                        { id: 2, name: 'Data Science' },
+                        { id: 3, name: 'Business' },
+                        { id: 4, name: 'Design' },
+                        { id: 5, name: 'Marketing' }
+                    ]);
+                }
+            } catch (error) {
+                console.error('Failed to fetch categories', error);
+                setCategories([
+                    { id: 1, name: 'Web Development' },
+                    { id: 2, name: 'Data Science' },
+                    { id: 3, name: 'Business' },
+                    { id: 4, name: 'Design' },
+                    { id: 5, name: 'Marketing' }
+                ]);
+            }
+        };
+        fetchCategories();
+    }, []);
+
+    const handleSubmit = async (status = 'published') => {
+        setLoading(true);
+        setMessage({ type: '', text: '' });
+
+        try {
+            const payload = {
+                ...courseData,
+                status,
+                sections // Include sections in payload
+            };
+
+            const response = await createCourse(payload);
+
+            if (response.data.success) {
+                setMessage({ type: 'success', text: `Course ${status === 'draft' ? 'saved' : 'published'} successfully!` });
+                setTimeout(() => {
+                    navigate('/instructor/dashboard');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error("Failed to create course:", error);
+            setMessage({
+                type: 'error',
+                text: error.response?.data?.message || "Failed to create course. Please check all fields."
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const steps = [
+        { id: 1, title: 'Course Details', icon: Layout },
+        { id: 2, title: 'Curriculum', icon: BookOpen },
+        { id: 3, title: 'Review & Publish', icon: Check }
+    ];
+
+    return (
+        <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-5xl mx-auto">
+                <div className="mb-10 text-center">
+                    <h1 className="text-4xl font-extrabold text-foreground tracking-tight mb-2">Create New Course</h1>
+                    <p className="text-lg text-muted-foreground">Share your knowledge with the world. Build a comprehensive learning experience.</p>
+                </div>
+
+                {/* Steps Indicator - Premium Style */}
+                <div className="mb-12">
+                    <div className="relative flex justify-between items-center max-w-2xl mx-auto">
+                        {/* Connecting Line */}
+                        <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 rounded-full"></div>
+                        <div
+                            className="absolute top-1/2 left-0 h-1 bg-primary -z-10 rounded-full transition-all duration-500 ease-in-out"
+                            style={{ width: `${((activeStep - 1) / (steps.length - 1)) * 100}%` }}
+                        ></div>
+
+                        {steps.map((step) => {
+                            const Icon = step.icon;
+                            const isActive = activeStep >= step.id;
+                            const isCurrent = activeStep === step.id;
+
+                            return (
+                                <div key={step.id} className="flex flex-col items-center group cursor-pointer" onClick={() => activeStep > step.id && setActiveStep(step.id)}>
+                                    <div
+                                        className={`
+                                            w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300
+                                            ${isActive ? 'bg-primary text-white scale-100' : 'bg-card text-muted-foreground border border-border hover:border-primary/50'}
+                                            ${isCurrent ? 'ring-4 ring-primary/20 scale-110' : ''}
+                                        `}
+                                    >
+                                        <Icon size={24} strokeWidth={2.5} />
+                                    </div>
+                                    <span className={`mt-3 text-sm font-bold tracking-wide transition-colors ${isActive ? 'text-primary' : 'text-gray-400'}`}>
+                                        {step.title}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="bg-card rounded-2xl shadow-xl border border-border/50 overflow-hidden">
+                    {/* Step 1: Course Information */}
+                    {activeStep === 1 && (
+                        <div className="p-8 lg:p-10 animate-fade-in-up">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                                <div className="lg:col-span-2 space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-foreground mb-2">Course Title</label>
+                                            <input
+                                                type="text"
+                                                name="title"
+                                                value={courseData.title}
+                                                onChange={handleInputChange}
+                                                className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-lg placeholder:text-muted-foreground/30 font-bold"
+                                                placeholder="e.g. Master Full-Stack Development"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-foreground mb-2">
+                                                <div className="flex items-center gap-2"><LinkIcon size={16} /> Course Slug</div>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="slug"
+                                                value={courseData.slug}
+                                                onChange={handleInputChange}
+                                                className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-muted-foreground"
+                                                placeholder="course-url-slug"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-foreground mb-2">Description</label>
+                                        <textarea
+                                            name="description"
+                                            rows="6"
+                                            value={courseData.description}
+                                            onChange={handleInputChange}
+                                            className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            placeholder="Detailed description of what students will learn..."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-foreground mb-2">
+                                                <div className="flex items-center gap-2"><Tag size={16} /> Category</div>
+                                            </label>
+                                            <select
+                                                name="category_id"
+                                                value={courseData.category_id}
+                                                onChange={handleInputChange}
+                                                className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            >
+                                                <option value="">Select Category</option>
+                                                {categories.map(cat => (
+                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-foreground mb-2">
+                                                <div className="flex items-center gap-2"><Clock size={16} /> Level</div>
+                                            </label>
+                                            <select
+                                                name="level"
+                                                value={courseData.level}
+                                                onChange={handleInputChange}
+                                                className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                            >
+                                                <option value="beginner">Beginner</option>
+                                                <option value="intermediate">Intermediate</option>
+                                                <option value="advanced">Advanced</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <div className="bg-muted rounded-xl p-6 border border-border">
+                                        <label className="block text-sm font-semibold text-foreground mb-4">Course Thumbnail URL</label>
+                                        <div className="space-y-4">
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <Upload size={16} className="text-muted-foreground" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    name="thumbnail"
+                                                    value={courseData.thumbnail}
+                                                    onChange={handleInputChange}
+                                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                    placeholder="https://example.com/image.jpg"
+                                                />
+                                            </div>
+
+                                            {courseData.thumbnail && (
+                                                <div className="relative w-full aspect-video rounded-lg border border-border overflow-hidden bg-background">
+                                                    <img
+                                                        src={courseData.thumbnail}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=2070';
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {!courseData.thumbnail && (
+                                                <div className="w-full aspect-video rounded-lg border-2 border-dashed border-input flex items-center justify-center text-muted-foreground text-xs">
+                                                    Enter a valid image URL for preview
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-muted rounded-xl p-6 border border-border">
+                                        <label className="block text-sm font-semibold text-foreground mb-4">Price & Duration</label>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Price ($)</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <DollarSign size={16} className="text-muted-foreground" />
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        name="price"
+                                                        value={courseData.price}
+                                                        onChange={handleInputChange}
+                                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Est. Duration (Min)</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <Clock size={16} className="text-muted-foreground" />
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        name="total_duration"
+                                                        value={courseData.total_duration}
+                                                        onChange={handleInputChange}
+                                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                        placeholder="e.g. 120"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2: Curriculum */}
+                    {activeStep === 2 && (
+                        <div className="p-8 lg:p-10 animate-fade-in-up">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-foreground">Course Curriculum</h2>
+                                <p className="text-muted-foreground">Structure your course with sections and lessons.</p>
+                            </div>
+                            <CurriculumBuilder
+                                sections={sections}
+                                onChange={(newSections) => setSections(newSections)}
+                            />
+                        </div>
+                    )}
+
+                    {/* Step 3: Review & Publish */}
+                    {activeStep === 3 && (
+                        <div className="p-12 text-center animate-fade-in-up">
+                            <div className="w-24 h-24 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Check size={48} strokeWidth={3} />
+                            </div>
+                            <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Publish?</h2>
+                            <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10">
+                                Your course landing page looks great! Review your curriculum one last time before making it live for students.
+                            </p>
+
+                            {message.text && (
+                                <div className={`mb-8 p-4 rounded-xl flex items-center justify-center gap-3 ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'
+                                    }`}>
+                                    {message.type === 'error' && <AlertCircle size={20} />}
+                                    {message.type === 'success' && <Check size={20} />}
+                                    <span className="font-semibold">{message.text}</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-center space-x-6">
+                                <button
+                                    onClick={() => handleSubmit('draft')}
+                                    disabled={loading}
+                                    className="px-8 py-4 bg-muted text-foreground rounded-xl font-bold hover:bg-muted/80 transition-colors flex items-center disabled:opacity-50"
+                                >
+                                    <Save size={20} className="mr-2" /> {loading ? 'Saving...' : 'Save to Drafts'}
+                                </button>
+                                <button
+                                    onClick={() => handleSubmit('published')}
+                                    disabled={loading}
+                                    className="px-10 py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 shadow-xl shadow-primary/20 transition-all transform hover:-translate-y-1 disabled:opacity-50 flex items-center"
+                                >
+                                    {loading ? 'Publishing...' : 'Publish Course Now'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navigation Footer */}
+                    <div className="bg-muted/50 p-6 flex justify-between items-center border-t border-border">
+                        <button
+                            onClick={() => setActiveStep(Math.max(1, activeStep - 1))}
+                            disabled={activeStep === 1}
+                            className="px-6 py-2.5 rounded-lg text-muted-foreground font-semibold hover:bg-background hover:shadow-sm border border-transparent hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            Back
+                        </button>
+
+                        {activeStep < 3 && (
+                            <button
+                                onClick={() => setActiveStep(activeStep + 1)}
+                                className="px-8 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 shadow-lg flex items-center transition-all"
+                            >
+                                Continue <ChevronRight size={18} className="ml-2" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default CourseCreate;
