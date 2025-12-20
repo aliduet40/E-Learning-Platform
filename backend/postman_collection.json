@@ -1,0 +1,348 @@
+{
+  "info": {
+    "name": "E-Learning Platform API",
+    "description": "Complete API collection for E-Learning Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"instructor@example.com\",\n  \"password\": \"password123\",\n  \"full_name\": \"John Instructor\",\n  \"role\": \"instructor\",\n  \"bio\": \"Experienced web developer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"instructor@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/auth/me"
+          }
+        },
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/auth/dashboard"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/categories"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "item": [
+        {
+          "name": "Browse Courses",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/courses?page=1&limit=10"
+          }
+        },
+        {
+          "name": "Get Course Details",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/courses/1"
+          }
+        },
+        {
+          "name": "Create Course",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/courses",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "title", "value": "Complete Web Development Bootcamp"},
+                {"key": "description", "value": "Learn full stack web development from scratch"},
+                {"key": "category_id", "value": "1"},
+                {"key": "level", "value": "beginner"},
+                {"key": "price", "value": "49.99"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enroll in Course",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/courses/1/enroll"
+          }
+        },
+        {
+          "name": "Get Course Curriculum",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/courses/1/curriculum"
+          }
+        },
+        {
+          "name": "Get My Courses (Student)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/courses/my-courses"
+          }
+        },
+        {
+          "name": "Get My Teaching (Instructor)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/courses/my-teaching"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sections",
+      "item": [
+        {
+          "name": "Add Section",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/courses/1/sections",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Introduction\",\n  \"description\": \"Getting started with the course\",\n  \"order_index\": 1\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lessons",
+      "item": [
+        {
+          "name": "Add Lesson",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/sections/1/lessons",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Welcome to the Course\",\n  \"content_type\": \"video\",\n  \"video_url\": \"https://www.youtube.com/watch?v=xxxxx\",\n  \"duration\": 10,\n  \"order_index\": 1,\n  \"is_preview\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Lesson",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/lessons/1"
+          }
+        },
+        {
+          "name": "Mark Lesson Complete",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/lessons/1/complete"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quizzes",
+      "item": [
+        {
+          "name": "Create Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/lessons/1/quiz",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"JavaScript Basics Quiz\",\n  \"passing_score\": 70,\n  \"time_limit\": 30,\n  \"questions\": [\n    {\n      \"question\": \"What is JavaScript?\",\n      \"option_a\": \"Programming language\",\n      \"option_b\": \"Coffee brand\",\n      \"option_c\": \"Framework\",\n      \"option_d\": \"Database\",\n      \"correct_answer\": \"A\",\n      \"points\": 10\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Start Quiz Attempt",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/quizzes/1/attempt"
+          }
+        },
+        {
+          "name": "Submit Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/quizzes/1/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attempt_id\": 1,\n  \"answers\": [\n    {\n      \"question_id\": 1,\n      \"answer\": \"A\"\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Assignments",
+      "item": [
+        {
+          "name": "Create Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/lessons/1/assignment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Build a Todo App\",\n  \"description\": \"Create a todo application using React\",\n  \"max_score\": 100\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Assignment",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/assignments/1/submit",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "content", "value": "Here is my submission"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Grade Submission",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/submissions/1/grade",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": 85,\n  \"feedback\": \"Great work!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Write Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "url": "{{base_url}}/courses/1/reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"review\": \"Excellent course!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Course Reviews",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/courses/1/reviews"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Progress",
+      "item": [
+        {
+          "name": "Get Progress",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/enrollments/1/progress"
+          }
+        },
+        {
+          "name": "Get Certificate",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/enrollments/1/certificate"
+          }
+        },
+        {
+          "name": "Get Student Stats",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": "{{base_url}}/progress/stats"
+          }
+        }
+      ]
+    }
+  ]
+}
