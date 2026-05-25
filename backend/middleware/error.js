@@ -1,4 +1,6 @@
-const { validationResult } = require('express-validator');
+const { validationResult } = require('express-validator'); 
+// express validator API ke input data check krta h aur wrong data database me jane se phle ruk leta h 
+// used as a m middlwware in routes
 
 // Validation error handler
 exports.validate = (req, res, next) => {

@@ -49,12 +49,17 @@ const MyLearning = () => {
         );
     }
 
+    const completedCount = enrolledCourses.filter(c => Number(c.progress) >= 100).length;
+    const allCompleted = completedCount === enrolledCourses.length;
+    const badgeCount = allCompleted ? completedCount : enrolledCourses.length;
+    const badgeLabel = `${badgeCount} ${badgeCount === 1 ? 'Course' : 'Courses'} ${allCompleted ? 'Completed' : 'Enrolled'}`;
+
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-black text-foreground tracking-tight">My Learning</h1>
                 <div className="text-sm font-bold text-muted-foreground bg-muted px-4 py-1.5 rounded-full border border-border">
-                    {enrolledCourses.length} Courses Enrolled
+                    {badgeLabel}
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

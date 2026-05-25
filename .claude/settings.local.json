@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:PGPASSWORD='123'; & 'C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe' -h localhost -U postgres -d elearning_platform -c \"SELECT id, title, LEFT\\(thumbnail, 80\\) as thumbnail_preview, LENGTH\\(thumbnail\\) as thumb_len FROM courses ORDER BY created_at DESC LIMIT 10;\" 2>&1)"
+    ]
+  }
+}

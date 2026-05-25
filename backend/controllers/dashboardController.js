@@ -1,4 +1,61 @@
 const pool = require('../config/database');
+const sseHub = require('../utils/sseHub');
+
+// Shared query so the GET endpoint, SSE snapshot, and broadcasts return the same shape.
+async function fetchInstructorStudents(instructorId) {
+    const result = await pool.query(
+        `SELECT
+            e.id AS enrollment_id,
+            e.progress,
+            e.enrolled_at,
+            e.completed_at,
+            u.id AS student_id,
+            u.full_name AS student_name,
+            u.email AS student_email,
+            u.avatar AS student_avatar,
+            c.id AS course_id,
+            c.title AS course_title,
+            c.thumbnail AS course_thumbnail,
+            (
+                SELECT COUNT(*)
+                FROM lessons l
+                JOIN sections s ON l.section_id = s.id
+                WHERE s.course_id = c.id
+            ) AS total_lessons,
+            (
+                SELECT COUNT(*)
+                FROM lesson_progress lp
+                WHERE lp.enrollment_id = e.id AND lp.completed = true
+            ) AS completed_lessons
+        FROM enrollments e
+        JOIN courses c ON e.course_id = c.id
+        JOIN users u ON e.student_id = u.id
+        WHERE c.instructor_id = $1
+        ORDER BY e.enrolled_at DESC`,
+        [instructorId]
+    );
+
+    return result.rows.map(row => ({
+        ...row,
+        total_lessons: parseInt(row.total_lessons) || 0,
+        completed_lessons: parseInt(row.completed_lessons) || 0,
+        progress: parseInt(row.progress) || 0
+    }));
+}
+
+// Push fresh snapshot to all active SSE clients for this instructor.
+async function broadcastInstructorStudents(instructorId) {
+    if (!instructorId) return;
+    if (sseHub.clientCount(instructorId) === 0) return;
+    try {
+        const data = await fetchInstructorStudents(instructorId);
+        sseHub.broadcast(instructorId, 'students', data);
+    } catch (err) {
+        console.error('SSE broadcast error:', err);
+    }
+}
+
+exports.broadcastInstructorStudents = broadcastInstructorStudents;
 
 // @desc    Get student dashboard stats
 // @route   GET /api/dashboard/student
@@ -97,6 +154,56 @@ exports.getInstructorDashboard = async (req, res) => {
             message: 'Server error'
         });
     }
+};
+
+// @desc    Get students enrolled in the logged-in instructor's courses
+// @route   GET /api/dashboard/instructor/students
+// @access  Private (Instructor)
+exports.getInstructorStudents = async (req, res) => {
+    try {
+        const data = await fetchInstructorStudents(req.user.id);
+        res.json({ success: true, data });
+    } catch (error) {
+        console.error('Instructor Students Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// @desc    Stream students for the logged-in instructor via Server-Sent Events
+// @route   GET /api/dashboard/instructor/students/stream
+// @access  Private (Instructor)
+exports.streamInstructorStudents = async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Tell the client to wait 3s before retrying if connection drops.
+    res.write('retry: 3000\n\n');
+
+    // Initial snapshot — always emit so the client exits its loading state.
+    try {
+        const data = await fetchInstructorStudents(req.user.id);
+        sseHub.send(res, 'students', data);
+    } catch (err) {
+        console.error('SSE initial snapshot error:', err);
+        sseHub.send(res, 'students', []);
+    }
+
+    sseHub.subscribe(req.user.id, res);
+
+    // Heartbeat every 25s so proxies don't time out the idle connection.
+    const heartbeat = setInterval(() => {
+        try { res.write(': ping\n\n'); } catch (e) { /* ignore */ }
+    }, 25000);
+
+    const cleanup = () => {
+        clearInterval(heartbeat);
+        sseHub.unsubscribe(req.user.id, res);
+    };
+    req.on('close', cleanup);
+    req.on('aborted', cleanup);
 };
 
 // @desc    Get admin dashboard stats

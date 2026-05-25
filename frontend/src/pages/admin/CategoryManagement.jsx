@@ -129,7 +129,7 @@ const CategoryManagement = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-muted/50 border-b border-border">
-                                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Category Info</th>
+                                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Category</th>
                                     <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground">Description</th>
                                     <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Actions</th>
                                 </tr>

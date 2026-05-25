@@ -56,11 +56,19 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-        window.location.href = '/login';
+    const logout = async () => {
+        try {
+            // Tell the backend to revoke the token; ignore failures so we never trap
+            // the user in a half-logged-out state.
+            await authApi.logout();
+        } catch (err) {
+            console.warn('Backend logout failed (continuing client-side):', err?.response?.status || err?.message);
+        } finally {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            window.location.href = '/login';
+        }
     };
 
     const value = {

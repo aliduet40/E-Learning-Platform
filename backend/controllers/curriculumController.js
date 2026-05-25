@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { broadcastInstructorStudents } = require('./dashboardController');
 
 // @desc    Add section to course
 // @route   POST /api/courses/:id/sections
@@ -347,6 +348,15 @@ exports.completeLesson = async (req, res) => {
         total_lessons: total
       }
     });
+
+    // Push real-time progress update to the course's instructor.
+    pool
+      .query('SELECT instructor_id FROM courses WHERE id = $1', [lesson.rows[0].course_id])
+      .then((r) => {
+        const instructorId = r.rows[0]?.instructor_id;
+        if (instructorId) broadcastInstructorStudents(instructorId);
+      })
+      .catch((err) => console.error('SSE lesson broadcast lookup:', err));
   } catch (error) {
     console.error(error);
     res.status(500).json({

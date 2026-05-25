@@ -90,10 +90,20 @@ const StudentDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {enrolledCourses.length > 0 ? (
                         enrolledCourses.map(course => (
-                            console.log(course),
                             <div key={course.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-xl transition-all group flex h-44">
-                                <Link to={`/courses/${course.course_id}/learn`} className="w-1/3 relative overflow-hidden block">
-                                    <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                <Link to={`/courses/${course.course_id}/learn`} className="w-1/3 relative overflow-hidden block bg-muted">
+                                    {course.thumbnail ? (
+                                        <img
+                                            src={course.thumbnail}
+                                            alt={course.title}
+                                            className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                        />
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                                            <BookOpen size={32} />
+                                        </div>
+                                    )}
                                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                                         <PlayCircle size={40} className="text-white opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 duration-300" />
                                     </div>

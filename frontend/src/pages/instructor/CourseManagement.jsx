@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, BookOpen, Users, DollarSign, Layers, ChevronRight, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen, Layers, Search } from 'lucide-react';
 import * as coursesApi from '../../api/courses.api';
 import * as dashboardApi from '../../api/dashboard.api';
 import Loader from '../../components/common/Loader';
@@ -109,11 +109,16 @@ const CourseManagement = () => {
                                     <tr key={course.id} className="group hover:bg-muted/30 transition-all">
                                         <td className="px-8 py-6">
                                             <div className="flex items-center">
-                                                <div className="relative h-14 w-24 rounded-xl overflow-hidden border border-border shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-500">
+                                                <div className="relative h-14 w-24 rounded-xl overflow-hidden border border-border shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-500 bg-muted">
                                                     {course.thumbnail ? (
-                                                        <img src={course.thumbnail} alt="" className="h-full w-full object-cover" />
+                                                        <img
+                                                            src={course.thumbnail}
+                                                            alt=""
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
                                                     ) : (
-                                                        <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground"><BookOpen size={20} /></div>
+                                                        <div className="w-full h-full flex items-center justify-center text-muted-foreground"><BookOpen size={20} /></div>
                                                     )}
                                                 </div>
                                                 <div className="ml-5">

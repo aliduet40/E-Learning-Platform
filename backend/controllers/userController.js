@@ -6,8 +6,8 @@ const pool = require('../config/database');
 exports.getUsers = async (req, res) => {
     try {
         const { search, role, verified } = req.query;
-        let query = 'SELECT id, full_name, email, role, is_verified, created_at FROM users WHERE 1=1';
-        const params = [];
+        let query = 'SELECT id, full_name, email, role, is_verified, created_at FROM users WHERE 1=1'; //trick to add AND opeartor in later on  query
+        const params = []; // Array to hold query parameters like ($1,$2,...)
 
         if (search) {
             params.push(`%${search}%`);
@@ -18,6 +18,10 @@ exports.getUsers = async (req, res) => {
             params.push(role);
             query += ` AND role = $${params.length}`;
         }
+
+        // /api/users?verified=true (only veriify uers )
+        // /api/users?verified=false (only unverified users)
+        // /api/users= (all users)
 
         if (verified !== undefined && verified !== '') {
             params.push(verified === 'true');
@@ -80,8 +84,12 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("User Id:",  id)
+        console.log("Req Params:", req.params)
 
-        // Prevent admin from deleting themselves
+        // Prevent admin from deleting themselves 
+        // params.id === user id
+        // req.params.id=== currently logged in admin id 
         if (parseInt(id) === req.user.id) {
             return res.status(400).json({
                 success: false,

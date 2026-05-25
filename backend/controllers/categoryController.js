@@ -4,7 +4,7 @@ const pool = require('../config/database');
 exports.getCategories = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM categories ORDER BY name'
+      'SELECT * FROM categories ORDER BY name'                        // by default ascending order
     );
 
     res.json({

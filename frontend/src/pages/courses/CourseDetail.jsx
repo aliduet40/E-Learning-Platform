@@ -289,11 +289,31 @@ const CourseDetail = () => {
                                 </div>
 
                                 <div className="p-8">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <span className="text-4xl font-bold text-foreground">${course.price}</span>
-                                        <span className="text-lg text-muted-foreground line-through mb-1.5">${(course.price * 1.5).toFixed(2)}</span>
-                                        <span className="text-sm text-emerald-500 font-bold mb-2 ml-auto p-1 bg-emerald-500/10 rounded">33% OFF</span>
-                                    </div>
+                                    {(() => {
+                                        const salePrice = Number(course.price) || 0;
+                                        const originalPrice = Number(course.original_price) || 0;
+                                        const hasDiscount = originalPrice > salePrice && salePrice > 0;
+                                        const discountPct = hasDiscount
+                                            ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
+                                            : 0;
+                                        return (
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <span className="text-4xl font-bold text-foreground">
+                                                    {salePrice > 0 ? `$${salePrice.toFixed(2)}` : 'Free'}
+                                                </span>
+                                                {hasDiscount && (
+                                                    <>
+                                                        <span className="text-lg text-muted-foreground line-through mb-1.5">
+                                                            ${originalPrice.toFixed(2)}
+                                                        </span>
+                                                        <span className="text-sm text-emerald-500 font-bold mb-2 ml-auto p-1 bg-emerald-500/10 rounded">
+                                                            {discountPct}% OFF
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
 
                                     {isEnrolled ? (
                                         <button

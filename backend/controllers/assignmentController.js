@@ -81,6 +81,28 @@ exports.submitAssignment = async (req, res) => {
     const { content } = req.body;
     const assignmentId = req.params.id;
 
+    // Check assignment existence and deadline
+    const assignmentResult = await pool.query(
+      'SELECT due_date FROM assignments WHERE id = $1',
+      [assignmentId]
+    );
+
+    if (assignmentResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    const dueDate = assignmentResult.rows[0].due_date;
+    // Check if deadline has passed (only if due_date is set)
+    if (dueDate && new Date() > new Date(dueDate)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assignment deadline has passed. You cannot submit anymore.'
+      });
+    }
+
     let file_url = null;
     if (req.file) {
       file_url = `/uploads/assignments/${req.file.filename}`;

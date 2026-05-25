@@ -131,11 +131,16 @@ const InstructorDashboard = () => {
                                     <tr key={course.id} className="group hover:bg-muted/30 transition-all">
                                         <td className="px-8 py-5">
                                             <div className="flex items-center">
-                                                <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-border shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                <div className="relative h-12 w-20 rounded-lg overflow-hidden border border-border shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform bg-muted">
                                                     {course.thumbnail ? (
-                                                        <img src={course.thumbnail} alt="" className="h-full w-full object-cover" />
+                                                        <img
+                                                            src={course.thumbnail}
+                                                            alt=""
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
                                                     ) : (
-                                                        <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground"><BookOpen size={16} /></div>
+                                                        <div className="w-full h-full flex items-center justify-center text-muted-foreground"><BookOpen size={16} /></div>
                                                     )}
                                                 </div>
                                                 <div className="ml-4">

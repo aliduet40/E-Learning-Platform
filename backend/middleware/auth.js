@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const tokenBlacklist = require('../utils/tokenBlacklist');
 
 // Protect routes - verify JWT token
 exports.protect = async (req, res, next) => {
@@ -9,6 +10,9 @@ exports.protect = async (req, res, next) => {
     // Check if token exists in headers
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
+    } else if (req.query && req.query.token) {
+      // SSE / EventSource clients can't set headers — accept token from query string.
+      token = req.query.token;
     }
 
     if (!token) {
@@ -18,13 +22,21 @@ exports.protect = async (req, res, next) => {
       });
     }
 
+    if (tokenBlacklist.isBlacklisted(token)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session ended. Please log in again.'
+      });
+    }
+
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.token = token; // exposed so the logout controller can blacklist it
 
       // Get user from database
       const result = await pool.query(
-        'SELECT id, email, full_name, role, bio, avatar, is_verified FROM users WHERE id = $1',
+        'SELECT id, email, full_name, role, bio, avatar, cloudinary_avatar_url, is_verified, created_at FROM users WHERE id = $1',
         [decoded.id]
       );
 
@@ -123,3 +135,5 @@ exports.isEnrolled = async (req, res, next) => {
     });
   }
 };
+
+

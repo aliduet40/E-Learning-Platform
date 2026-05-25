@@ -36,21 +36,30 @@ const storage = multer.diskStorage({
 // File filter
 const fileFilter = (req, file, cb) => {
   // Allowed file types
-  const allowedImages = /jpeg|jpg|png|gif|webp/;
+  const allowedImageExts = /\.(jpe?g|png|gif|webp|bmp|svg|avif|heic|heif)$/i;
   const allowedDocs = /pdf|doc|docx|txt|zip/;
-  
-  const extname = path.extname(file.originalname).toLowerCase();
-  const mimetype = file.mimetype;
+
+  const extname = path.extname(file.originalname || '').toLowerCase();
+  const mimetype = (file.mimetype || '').toLowerCase();
 
   if (file.fieldname === 'thumbnail' || file.fieldname === 'avatar') {
-    if (allowedImages.test(extname) && mimetype.startsWith('image/')) {
+    // Accept if EITHER the browser-reported mimetype is an image OR the
+    // extension looks like an image. Both signals are imperfect alone
+    // (mobile uploads sometimes report octet-stream; pasted/screenshot
+    // files sometimes lack an extension) so we OR them. Cloudinary will
+    // reject non-image binaries downstream anyway.
+    const isImageMime = mimetype.startsWith('image/');
+    const isImageExt = allowedImageExts.test(extname);
+    if (isImageMime || isImageExt) {
       return cb(null, true);
     }
     return cb(new Error('Only image files are allowed for thumbnails and avatars'));
   }
 
   if (file.fieldname === 'resource' || file.fieldname === 'assignment') {
-    const isAllowed = allowedImages.test(extname) || allowedDocs.test(extname.replace('.', ''));
+    const isAllowed =
+      allowedImageExts.test(extname) ||
+      allowedDocs.test(extname.replace('.', ''));
     if (isAllowed) {
       return cb(null, true);
     }

@@ -13,7 +13,8 @@ const initDatabase = async () => {
         full_name VARCHAR(255) NOT NULL,
         role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'instructor', 'admin')),
         bio TEXT,
-        avatar VARCHAR(255),
+        avatar TEXT,
+        cloudinary_avatar_url TEXT,
         is_verified BOOLEAN DEFAULT false,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -38,13 +39,14 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS courses (
         id SERIAL PRIMARY KEY,
         instructor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
-        slug VARCHAR(255) UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
         description TEXT,
         category_id INTEGER REFERENCES categories(id),
         level VARCHAR(20) CHECK (level IN ('beginner', 'intermediate', 'advanced')),
         price DECIMAL(10,2) DEFAULT 0,
-        thumbnail VARCHAR(255),
+        original_price DECIMAL(10,2),
+        thumbnail TEXT,
         status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
         total_duration INTEGER,
         total_lessons INTEGER DEFAULT 0,
@@ -61,7 +63,7 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS sections (
         id SERIAL PRIMARY KEY,
         course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
+        title TEXT NOT NULL,
         description TEXT,
         order_index INTEGER NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -74,9 +76,9 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS lessons (
         id SERIAL PRIMARY KEY,
         section_id INTEGER REFERENCES sections(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
+        title TEXT NOT NULL,
         content_type VARCHAR(20) CHECK (content_type IN ('video', 'text', 'quiz', 'assignment')),
-        video_url VARCHAR(500),
+        video_url TEXT,
         text_content TEXT,
         duration INTEGER,
         order_index INTEGER NOT NULL,
@@ -95,7 +97,7 @@ const initDatabase = async () => {
         enrolled_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         progress INTEGER DEFAULT 0,
         completed_at TIMESTAMPTZ,
-        certificate_url VARCHAR(255),
+        certificate_url TEXT,
         UNIQUE(student_id, course_id)
       );
     `);
@@ -119,7 +121,7 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS quizzes (
         id SERIAL PRIMARY KEY,
         lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
+        title TEXT NOT NULL,
         passing_score INTEGER DEFAULT 70,
         time_limit INTEGER,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -165,7 +167,7 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS assignments (
         id SERIAL PRIMARY KEY,
         lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
+        title TEXT NOT NULL,
         description TEXT,
         due_date TIMESTAMPTZ,
         max_score INTEGER DEFAULT 100,
@@ -181,7 +183,7 @@ const initDatabase = async () => {
         assignment_id INTEGER REFERENCES assignments(id) ON DELETE CASCADE,
         student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         content TEXT,
-        file_url VARCHAR(255),
+        file_url TEXT,
         submitted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         grade INTEGER,
         feedback TEXT,
@@ -213,8 +215,8 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS resources (
         id SERIAL PRIMARY KEY,
         lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
-        title VARCHAR(255) NOT NULL,
-        file_url VARCHAR(500) NOT NULL,
+        title TEXT NOT NULL,
+        file_url TEXT NOT NULL,
         file_size INTEGER,
         file_type VARCHAR(50),
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

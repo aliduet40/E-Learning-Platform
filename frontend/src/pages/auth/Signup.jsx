@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthCard from '../../components/auth/AuthCard';
 import RoleSelector from '../../components/auth/RoleSelector';
-import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, Camera, X } from 'lucide-react';
 import Loader from '../../components/common/Loader';
 import { ROLES } from '../../utils/constants';
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -14,10 +17,13 @@ const Signup = () => {
         password: '',
         role: ROLES.STUDENT // Default
     });
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { signup } = useAuth();
     const navigate = useNavigate();
+    const fileInputRef = useRef(null);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,17 +33,40 @@ const Signup = () => {
         setFormData({ ...formData, role });
     };
 
+    const handleAvatarChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+            setError('Avatar must be a JPG, PNG, WebP, or GIF image.');
+            return;
+        }
+        if (file.size > MAX_AVATAR_BYTES) {
+            setError('Avatar must be smaller than 5MB.');
+            return;
+        }
+        setError('');
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    };
+
+    const clearAvatar = () => {
+        setAvatarFile(null);
+        if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+        setAvatarPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setIsSubmitting(true);
 
         try {
-            // Backend expects 'full_name' (already in state) and lowercase 'role'
             const payload = {
                 ...formData,
-                role: formData.role.toLowerCase()
+                role: formData.role.toLowerCase(),
             };
+            if (avatarFile) payload.avatar = avatarFile;
             await signup(payload);
             navigate('/login'); // Redirect to login after successful signup
         } catch (err) {
@@ -72,6 +101,47 @@ const Signup = () => {
                 <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-3">Select Account Type</label>
                     <RoleSelector selectedRole={formData.role} onSelect={handleRoleSelect} />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-3">Profile Picture <span className="text-muted-foreground/60">(optional)</span></label>
+                    <div className="flex items-center gap-4">
+                        <div className="relative h-20 w-20 rounded-full border-2 border-dashed border-input bg-background overflow-hidden flex items-center justify-center">
+                            {avatarPreview ? (
+                                <>
+                                    <img src={avatarPreview} alt="Preview" className="h-full w-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={clearAvatar}
+                                        className="absolute top-0 right-0 bg-destructive text-white rounded-full p-0.5 m-1 shadow"
+                                        title="Remove"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </>
+                            ) : (
+                                <Camera className="h-7 w-7 text-muted-foreground/50" />
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <input
+                                ref={fileInputRef}
+                                id="avatar"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                onChange={handleAvatarChange}
+                                className="hidden"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-sm font-bold text-primary hover:text-primary/80"
+                            >
+                                {avatarFile ? 'Change image' : 'Choose image'}
+                            </button>
+                            <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP, or GIF · max 5MB</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div>

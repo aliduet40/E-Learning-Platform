@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, User, Clock, Layers, ChevronRight } from 'lucide-react';
+import { Star, User, Clock, Layers, ChevronRight, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const CourseCard = ({ course, isFromMyLearning = false }) => {
@@ -16,17 +16,23 @@ const CourseCard = ({ course, isFromMyLearning = false }) => {
     } = course || {};
 
     const displayRating = Number(average_rating).toFixed(1);
-    const displayThumbnail = thumbnail || 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=2070';
 
     return (
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group flex flex-col h-full transform hover:-translate-y-1">
             {/* Thumbnail */}
-            <div className="relative aspect-video overflow-hidden">
-                <img
-                    src={displayThumbnail}
-                    alt={title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                />
+            <div className="relative aspect-video overflow-hidden bg-muted">
+                {thumbnail ? (
+                    <img
+                        src={thumbnail}
+                        alt={title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <BookOpen size={48} />
+                    </div>
+                )}
                 <div className="absolute top-3 left-3">
                     <span className="bg-white/90 backdrop-blur-md text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                         {category_name || 'General'}

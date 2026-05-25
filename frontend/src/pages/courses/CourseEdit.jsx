@@ -17,6 +17,7 @@ const CourseEdit = () => {
         category_id: '',
         level: 'beginner',
         price: '',
+        original_price: '',
         status: 'draft',
         total_duration: '',
         thumbnail: ''
@@ -47,6 +48,7 @@ const CourseEdit = () => {
                         category_id: data.category_id || '',
                         level: data.level || 'beginner',
                         price: data.price || '',
+                        original_price: data.original_price ?? '',
                         status: data.status || 'draft',
                         total_duration: data.total_duration || '',
                         thumbnail: data.thumbnail || ''
@@ -262,10 +264,7 @@ const CourseEdit = () => {
                                                         src={courseData.thumbnail}
                                                         alt="Preview"
                                                         className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            e.target.onerror = null;
-                                                            e.target.src = 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=2070';
-                                                        }}
+                                                        onError={(e) => { e.target.style.display = 'none'; }}
                                                     />
                                                 </div>
                                             )}
@@ -276,7 +275,7 @@ const CourseEdit = () => {
                                         <label className="block text-sm font-semibold text-foreground mb-4">Price & Duration</label>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Price ($)</label>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Sale Price ($)</label>
                                                 <div className="relative">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                         <DollarSign size={16} className="text-muted-foreground" />
@@ -289,6 +288,27 @@ const CourseEdit = () => {
                                                         className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                                     />
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Original Price ($) <span className="text-muted-foreground/60 normal-case">— optional, shown struck-through</span></label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <DollarSign size={16} className="text-muted-foreground" />
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        name="original_price"
+                                                        value={courseData.original_price}
+                                                        onChange={handleInputChange}
+                                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                                        placeholder="Leave empty for no discount"
+                                                    />
+                                                </div>
+                                                {courseData.original_price && courseData.price && Number(courseData.original_price) > Number(courseData.price) && (
+                                                    <p className="text-xs text-emerald-600 font-bold mt-1">
+                                                        {Math.round(((Number(courseData.original_price) - Number(courseData.price)) / Number(courseData.original_price)) * 100)}% OFF
+                                                    </p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="text-xs font-medium text-muted-foreground uppercase mb-1 block">Est. Duration (Min)</label>

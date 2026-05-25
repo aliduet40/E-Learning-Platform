@@ -7,15 +7,19 @@ const upload = require('../middleware/upload');
 const {
   register,
   login,
+  logout,
   getMe,
   updateProfile,
-  getDashboard
+  changePassword,
+  getDashboard,
+  forgotPassword,
+  resetPassword
 } = require('../controllers/authController');
 
 // Validation rules
 const registerValidation = [
   body('email').isEmail().withMessage('Please enter a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('password').isLength({ min: 6 }).withMessage('Password at least 6 characters'),
   body('full_name').notEmpty().withMessage('Full name is required'),
   body('role').optional().isIn(['student', 'instructor', 'admin']).withMessage('Invalid role')
 ];
@@ -26,10 +30,14 @@ const loginValidation = [
 ];
 
 // Routes
-router.post('/register', registerValidation, validate, register);
+router.post('/register', upload.single('avatar'), registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, upload.single('avatar'), updateProfile);
+router.put('/change-password', protect, changePassword);
 router.get('/dashboard', protect, getDashboard);
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:token', resetPassword);
 
 module.exports = router;

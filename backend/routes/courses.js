@@ -23,7 +23,8 @@ const courseValidation = [
   body('description').notEmpty().withMessage('Description is required'),
   body('category_id').isInt().withMessage('Valid category is required'),
   body('level').isIn(['beginner', 'intermediate', 'advanced']).withMessage('Invalid level'),
-  body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number')
+  body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('original_price').optional({ values: 'falsy' }).isFloat({ min: 0 }).withMessage('Original price must be a positive number')
 ];
 
 // Routes

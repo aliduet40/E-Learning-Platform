@@ -1,10 +1,12 @@
-const pool = require('../config/database');
-const slugify = require('slugify');
+const pool = require("../config/database");
+const slugify = require("slugify"); // it makes used use to clean readable url format
+const { broadcastInstructorStudents } = require("./dashboardController");
 
 // @desc    Get all courses with filters
 // @route   GET /api/courses
 // @access  Public
 exports.getCourses = async (req, res) => {
+  // fetch all course with filters
   try {
     const {
       search,
@@ -13,9 +15,9 @@ exports.getCourses = async (req, res) => {
       price_min,
       price_max,
       rating_min,
-      sort = 'newest',
+      sort = "newest",
       page = 1,
-      limit = 10
+      limit = 10,
     } = req.query;
 
     let query = `
@@ -30,8 +32,8 @@ exports.getCourses = async (req, res) => {
       WHERE c.status = 'published'
     `;
 
-    const params = [];
-    let paramCount = 0;
+    const params = []; // SQL injections se bachne k lea attackers login ko bypass na krlen
+    let paramCount = 0; // ye parametrized query hoti h means database kdud value handle krta h
 
     // Search filter
     if (search) {
@@ -42,7 +44,10 @@ exports.getCourses = async (req, res) => {
 
     // Category filter
     if (category) {
-      const categoryIds = category.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+      const categoryIds = category
+        .split(",")
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
       if (categoryIds.length > 0) {
         paramCount++;
         query += ` AND c.category_id = ANY($${paramCount}::int[])`;
@@ -78,20 +83,20 @@ exports.getCourses = async (req, res) => {
 
     // Sorting
     switch (sort) {
-      case 'popular':
-        query += ' ORDER BY c.total_enrollments DESC';
+      case "popular":
+        query += " ORDER BY c.total_enrollments DESC";
         break;
-      case 'rating':
-        query += ' ORDER BY c.average_rating DESC';
+      case "rating":
+        query += " ORDER BY c.average_rating DESC";
         break;
-      case 'price_low':
-        query += ' ORDER BY c.price ASC';
+      case "price_low":
+        query += " ORDER BY c.price ASC";
         break;
-      case 'price_high':
-        query += ' ORDER BY c.price DESC';
+      case "price_high":
+        query += " ORDER BY c.price DESC";
         break;
       default: // newest
-        query += ' ORDER BY c.created_at DESC';
+        query += " ORDER BY c.created_at DESC";
     }
 
     // Get total count BEFORE adding limit and offset
@@ -105,7 +110,7 @@ exports.getCourses = async (req, res) => {
     // Re-apply filters for count query (manually, to match query structure)
     // Actually, it's easier to just use the params we already have except limit/offset
     // But PostgreSQL doesn't allow subqueries for counts after sort/limit easily without wrapping.
-    // Let's just wrap the current query except for LIMIT/OFFSET for count if we wanted, 
+    // Let's just wrap the current query except for LIMIT/OFFSET for count if we wanted,
     // but the manual way is safer for performance.
 
     // Simpler way: Use the same WHERE clause from 'query' prefix but for COUNT
@@ -134,14 +139,14 @@ exports.getCourses = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -163,25 +168,25 @@ exports.getCourse = async (req, res) => {
       LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.instructor_id = u.id
       WHERE c.id = $1`,
-      [req.params.id]
+      [req.params.id],
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Course not found'
+        message: "Course not found",
       });
     }
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -192,22 +197,57 @@ exports.getCourse = async (req, res) => {
 exports.createCourse = async (req, res) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const { title, description, category_id, level, price, total_duration, status, slug: customSlug, sections } = req.body;
+    await client.query("BEGIN");
+    const {
+      title,
+      description,
+      category_id,
+      level,
+      price,
+      original_price,
+      total_duration,
+      status,
+      slug: customSlug,
+      sections,
+    } = req.body;
 
     // Use provided slug or generate one
-    const slug = (customSlug || slugify(title, { lower: true, strict: true })) + '-' + Date.now();
+    const slug =
+      (customSlug || slugify(title, { lower: true, strict: true })) +
+      "-" +
+      Date.now();
 
     let thumbnail = req.body.thumbnail || null;
     if (req.file) {
       thumbnail = `/uploads/thumbnails/${req.file.filename}`;
     }
 
+    const salePrice = Number(price) || 0;
+    const originalPrice =
+      original_price !== undefined &&
+      original_price !== null &&
+      original_price !== "" &&
+      Number(original_price) > salePrice
+        ? Number(original_price)
+        : null;
+
     const courseResult = await client.query(
-      `INSERT INTO courses (instructor_id, title, slug, description, category_id, level, price, thumbnail, total_duration, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO courses (instructor_id, title, slug, description, category_id, level, price, original_price, thumbnail, total_duration, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [req.user.id, title, slug, description, category_id, level, price || 0, thumbnail, total_duration || 0, status || 'draft']
+      [
+        req.user.id,
+        title,
+        slug,
+        description,
+        category_id,
+        level,
+        salePrice,
+        originalPrice,
+        thumbnail,
+        total_duration || 0,
+        status || "draft",
+      ],
     );
 
     const course = courseResult.rows[0];
@@ -220,7 +260,7 @@ exports.createCourse = async (req, res) => {
           `INSERT INTO sections (course_id, title, order_index)
            VALUES ($1, $2, $3)
            RETURNING id`,
-          [course.id, section.title, i]
+          [course.id, section.title, i],
         );
 
         const sectionId = sectionResult.rows[0].id;
@@ -232,18 +272,22 @@ exports.createCourse = async (req, res) => {
               `INSERT INTO lessons (section_id, title, content_type, order_index)
                VALUES ($1, $2, $3, $4)
                RETURNING id`,
-              [sectionId, lesson.title, lesson.type, j]
+              [sectionId, lesson.title, lesson.type, j],
             );
 
             const lessonId = lessonResult.rows[0].id;
 
             // Handle Quiz creation if type is 'quiz'
-            if (lesson.type === 'quiz' && lesson.questions && Array.isArray(lesson.questions)) {
+            if (
+              lesson.type === "quiz" &&
+              lesson.questions &&
+              Array.isArray(lesson.questions)
+            ) {
               const quizResult = await client.query(
                 `INSERT INTO quizzes (lesson_id, title, passing_score)
                  VALUES ($1, $2, $3)
                  RETURNING id`,
-                [lessonId, lesson.title, 70]
+                [lessonId, lesson.title, 70],
               );
 
               const quizId = quizResult.rows[0].id;
@@ -263,8 +307,8 @@ exports.createCourse = async (req, res) => {
                     q.option_d,
                     q.correct_answer.toUpperCase(),
                     q.points || 1,
-                    k
-                  ]
+                    k,
+                  ],
                 );
               }
             }
@@ -273,17 +317,17 @@ exports.createCourse = async (req, res) => {
       }
     }
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     res.status(201).json({
       success: true,
-      data: course
+      data: course,
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error(error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Server error'
+      message: error.message || "Server error",
     });
   } finally {
     client.release();
@@ -293,15 +337,18 @@ exports.createCourse = async (req, res) => {
 exports.updateCourse = async (req, res) => {
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const { title, description, category_id, level, price, status, sections } = req.body;
+    await client.query("BEGIN");
+    const { title, description, category_id, level, price, original_price, status, sections } =
+      req.body;
 
     // Get current course
-    const current = await client.query('SELECT * FROM courses WHERE id = $1', [req.params.id]);
+    const current = await client.query("SELECT * FROM courses WHERE id = $1", [
+      req.params.id,
+    ]);
     if (current.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Course not found'
+        message: "Course not found",
       });
     }
 
@@ -312,15 +359,36 @@ exports.updateCourse = async (req, res) => {
       thumbnail = req.body.thumbnail;
     }
 
-    const slug = title && title !== current.rows[0].title
-      ? slugify(title, { lower: true, strict: true }) + '-' + Date.now()
-      : current.rows[0].slug;
+    const slug =
+      title && title !== current.rows[0].title
+        ? slugify(title, { lower: true, strict: true }) + "-" + Date.now()
+        : current.rows[0].slug;
+
+    const nextPrice =
+      price !== undefined
+        ? price === ""
+          ? 0
+          : Number(price)
+        : Number(current.rows[0].price);
+
+    let nextOriginalPrice;
+    if (original_price === undefined) {
+      nextOriginalPrice = current.rows[0].original_price;
+    } else if (
+      original_price === null ||
+      original_price === "" ||
+      Number(original_price) <= nextPrice
+    ) {
+      nextOriginalPrice = null;
+    } else {
+      nextOriginalPrice = Number(original_price);
+    }
 
     const result = await client.query(
-      `UPDATE courses 
-       SET title = $1, slug = $2, description = $3, category_id = $4, 
-           level = $5, price = $6, status = $7, thumbnail = $8, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $9
+      `UPDATE courses
+       SET title = $1, slug = $2, description = $3, category_id = $4,
+           level = $5, price = $6, original_price = $7, status = $8, thumbnail = $9, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $10
        RETURNING *`,
       [
         title || current.rows[0].title,
@@ -328,18 +396,21 @@ exports.updateCourse = async (req, res) => {
         description || current.rows[0].description,
         category_id || current.rows[0].category_id,
         level || current.rows[0].level,
-        price !== undefined ? (price === '' ? 0 : price) : current.rows[0].price,
+        nextPrice,
+        nextOriginalPrice,
         status || current.rows[0].status,
         thumbnail,
-        req.params.id
-      ]
+        req.params.id,
+      ],
     );
 
     // Handle nested sections/lessons if provided
     if (sections && Array.isArray(sections)) {
       // For simplicity in this implementation, we'll replace the curriculum
       // WARNING: This will reset student progress for this course in a real app
-      await client.query('DELETE FROM sections WHERE course_id = $1', [req.params.id]);
+      await client.query("DELETE FROM sections WHERE course_id = $1", [
+        req.params.id,
+      ]);
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
@@ -347,7 +418,7 @@ exports.updateCourse = async (req, res) => {
           `INSERT INTO sections (course_id, title, order_index)
            VALUES ($1, $2, $3)
            RETURNING id`,
-          [req.params.id, section.title, i]
+          [req.params.id, section.title, i],
         );
 
         const sectionId = sectionResult.rows[0].id;
@@ -359,19 +430,19 @@ exports.updateCourse = async (req, res) => {
               `INSERT INTO lessons (section_id, title, content_type, order_index)
                VALUES ($1, $2, $3, $4)
                RETURNING id`,
-              [sectionId, lesson.title, lesson.type || lesson.content_type, j]
+              [sectionId, lesson.title, lesson.type || lesson.content_type, j],
             );
 
             const lessonId = lessonResult.rows[0].id;
 
             // Handle Quiz
-            if (lesson.type === 'quiz' || lesson.content_type === 'quiz') {
+            if (lesson.type === "quiz" || lesson.content_type === "quiz") {
               if (lesson.questions && Array.isArray(lesson.questions)) {
                 const quizResult = await client.query(
                   `INSERT INTO quizzes (lesson_id, title, passing_score)
                    VALUES ($1, $2, $3)
                    RETURNING id`,
-                  [lessonId, lesson.title, 70]
+                  [lessonId, lesson.title, 70],
                 );
 
                 const quizId = quizResult.rows[0].id;
@@ -391,8 +462,8 @@ exports.updateCourse = async (req, res) => {
                       q.option_d,
                       q.correct_answer,
                       q.points || 1,
-                      k
-                    ]
+                      k,
+                    ],
                   );
                 }
               }
@@ -402,17 +473,17 @@ exports.updateCourse = async (req, res) => {
       }
     }
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   } finally {
     client.release();
@@ -424,17 +495,17 @@ exports.updateCourse = async (req, res) => {
 // @access  Private (Instructor/Admin)
 exports.deleteCourse = async (req, res) => {
   try {
-    await pool.query('DELETE FROM courses WHERE id = $1', [req.params.id]);
+    await pool.query("DELETE FROM courses WHERE id = $1", [req.params.id]);
 
     res.json({
       success: true,
-      message: 'Course deleted successfully'
+      message: "Course deleted successfully",
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -446,38 +517,47 @@ exports.enrollCourse = async (req, res) => {
   try {
     // Check if already enrolled
     const existing = await pool.query(
-      'SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2',
-      [req.user.id, req.params.id]
+      "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2",
+      [req.user.id, req.params.id],
     );
 
     if (existing.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Already enrolled in this course'
+        message: "Already enrolled in this course",
       });
     }
 
     // Create enrollment
     const result = await pool.query(
-      'INSERT INTO enrollments (student_id, course_id) VALUES ($1, $2) RETURNING *',
-      [req.user.id, req.params.id]
+      "INSERT INTO enrollments (student_id, course_id) VALUES ($1, $2) RETURNING *",
+      [req.user.id, req.params.id],
     );
 
     // Update course enrollment count
     await pool.query(
-      'UPDATE courses SET total_enrollments = total_enrollments + 1 WHERE id = $1',
-      [req.params.id]
+      "UPDATE courses SET total_enrollments = total_enrollments + 1 WHERE id = $1",
+      [req.params.id],
     );
 
     res.status(201).json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
+
+    // Push real-time update to the course's instructor (after response — no need to block).
+    pool
+      .query("SELECT instructor_id FROM courses WHERE id = $1", [req.params.id])
+      .then((r) => {
+        const instructorId = r.rows[0]?.instructor_id;
+        if (instructorId) broadcastInstructorStudents(instructorId);
+      })
+      .catch((err) => console.error("SSE enrollment broadcast lookup:", err));
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -489,7 +569,7 @@ exports.getCourseCurriculum = async (req, res) => {
   try {
     const sections = await pool.query(
       `SELECT * FROM sections WHERE course_id = $1 ORDER BY order_index`,
-      [req.params.id]
+      [req.params.id],
     );
 
     const curriculum = await Promise.all(
@@ -499,41 +579,44 @@ exports.getCourseCurriculum = async (req, res) => {
            FROM lessons 
            WHERE section_id = $1 
            ORDER BY order_index`,
-          [section.id]
+          [section.id],
         );
 
         const lessons = await Promise.all(
           lessonsRecords.rows.map(async (lesson) => {
-            if (lesson.type === 'quiz') {
-              const quizResult = await pool.query('SELECT id FROM quizzes WHERE lesson_id = $1', [lesson.id]);
+            if (lesson.type === "quiz") {
+              const quizResult = await pool.query(
+                "SELECT id FROM quizzes WHERE lesson_id = $1",
+                [lesson.id],
+              );
               if (quizResult.rows.length > 0) {
                 const questionsResult = await pool.query(
-                  'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY order_index',
-                  [quizResult.rows[0].id]
+                  "SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY order_index",
+                  [quizResult.rows[0].id],
                 );
                 return { ...lesson, questions: questionsResult.rows };
               }
             }
             return lesson;
-          })
+          }),
         );
 
         return {
           ...section,
-          lessons
+          lessons,
         };
-      })
+      }),
     );
 
     res.json({
       success: true,
-      data: curriculum
+      data: curriculum,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -555,18 +638,18 @@ exports.getMyCourses = async (req, res) => {
       LEFT JOIN users u ON c.instructor_id = u.id
       WHERE e.student_id = $1
       ORDER BY e.enrolled_at DESC`,
-      [req.user.id]
+      [req.user.id],
     );
 
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };
@@ -587,18 +670,18 @@ exports.getMyTeaching = async (req, res) => {
       WHERE c.instructor_id = $1
       GROUP BY c.id, cat.name
       ORDER BY c.created_at DESC`,
-      [req.user.id]
+      [req.user.id],
     );
 
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: "Server error",
     });
   }
 };

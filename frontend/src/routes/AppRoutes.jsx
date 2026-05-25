@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
+import ForgotPassword from '../pages/auth/ForgotPassword';
+import ResetPassword from '../pages/auth/ResetPassword';
 import ProtectedRoute from './ProtectedRoute';
 import RoleBasedRoute from './RoleBasedRoute';
 import { ROLES } from '../utils/constants';
@@ -26,12 +28,15 @@ import UserManagement from '../pages/admin/UserManagement';
 import CourseModeration from '../pages/admin/CourseModeration';
 import CategoryManagement from '../pages/admin/CategoryManagement';
 import InstructorVerification from '../pages/admin/InstructorVerification';
+import Settings from '../pages/settings/Settings';
 
 const AppRoutes = () => {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
 
             {/* Player route often outside main layout or has special layout */}
             <Route path="/courses/:courseId/learn" element={
@@ -49,6 +54,11 @@ const AppRoutes = () => {
                 <Route path="profile" element={
                     <ProtectedRoute>
                         <Profile />
+                    </ProtectedRoute>
+                } />
+                <Route path="settings" element={
+                    <ProtectedRoute>
+                        <Settings />
                     </ProtectedRoute>
                 } />
 
@@ -152,6 +162,13 @@ const AppRoutes = () => {
                     <ProtectedRoute>
                         <RoleBasedRoute allowedRoles={[ROLES.ADMIN]}>
                             <InstructorVerification />
+                        </RoleBasedRoute>
+                    </ProtectedRoute>
+                } />
+                <Route path="admin/settings" element={
+                    <ProtectedRoute>
+                        <RoleBasedRoute allowedRoles={[ROLES.ADMIN]}>
+                            <Settings />
                         </RoleBasedRoute>
                     </ProtectedRoute>
                 } />
