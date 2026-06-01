@@ -342,6 +342,7 @@ const CourseEdit = () => {
                             <CurriculumBuilder
                                 sections={sections}
                                 onChange={(newSections) => setSections(newSections)}
+                                courseId={id}
                             />
                         </div>
                     )}

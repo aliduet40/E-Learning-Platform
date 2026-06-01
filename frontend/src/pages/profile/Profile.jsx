@@ -195,12 +195,12 @@ const Profile = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="p-5 bg-card rounded-xl border border-border shadow-sm">
+                            <div className="p-5 bg-card rounded-xl border border-border shadow-sm min-w-0">
                                 <div className="flex items-center text-muted-foreground mb-2">
                                     <Mail className="h-4 w-4 mr-2" />
                                     <span className="text-xs uppercase font-bold">Email</span>
                                 </div>
-                                <div className="text-foreground font-medium break-all">{user.email}</div>
+                                <div className="text-foreground font-medium truncate" title={user.email}>{user.email}</div>
                             </div>
                             <div className="p-5 bg-card rounded-xl border border-border shadow-sm">
                                 <div className="flex items-center text-muted-foreground mb-2">

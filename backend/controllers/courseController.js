@@ -2,6 +2,84 @@ const pool = require("../config/database");
 const slugify = require("slugify"); // it makes used use to clean readable url format
 const { broadcastInstructorStudents } = require("./dashboardController");
 
+// Persists a single lesson row plus type-specific child rows (quiz/assignment).
+// Used by createCourse and updateCourse so the field mapping stays in one place.
+async function persistLesson(client, sectionId, lesson, orderIndex) {
+  const type = lesson.type;
+  const textContent = type === "text" ? lesson.content ?? lesson.text_content ?? null : null;
+
+  const lessonResult = await client.query(
+    `INSERT INTO lessons (section_id, title, content_type, text_content, order_index, published)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
+    [
+      sectionId,
+      lesson.title,
+      type,
+      textContent,
+      orderIndex,
+      !!lesson.published,
+    ],
+  );
+  const lessonId = lessonResult.rows[0].id;
+
+  if (type === "quiz") {
+    const quizResult = await client.query(
+      `INSERT INTO quizzes (lesson_id, title, passing_score, attempts_allowed)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        lessonId,
+        lesson.title,
+        Number(lesson.passing_score) || 70,
+        Number(lesson.attempts_allowed) || 0,
+      ],
+    );
+    const quizId = quizResult.rows[0].id;
+
+    if (Array.isArray(lesson.questions)) {
+      for (let k = 0; k < lesson.questions.length; k++) {
+        const q = lesson.questions[k];
+        await client.query(
+          `INSERT INTO quiz_questions
+           (quiz_id, question, option_a, option_b, option_c, option_d, correct_answer, points, order_index)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            quizId,
+            q.question,
+            q.option_a,
+            q.option_b,
+            q.option_c,
+            q.option_d,
+            (q.correct_answer || "A").toUpperCase(),
+            q.points || 1,
+            k,
+          ],
+        );
+      }
+    }
+  }
+
+  if (type === "assignment") {
+    await client.query(
+      `INSERT INTO assignments
+       (lesson_id, title, instructions, due_date, max_score, submission_type, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        lessonId,
+        lesson.title,
+        lesson.instructions || null,
+        lesson.due_date || null,
+        Number(lesson.total_marks) || null,
+        lesson.submission_type || "file",
+        lesson.status || "open",
+      ],
+    );
+  }
+
+  return lessonId;
+}
+
 // @desc    Get all courses with filters
 // @route   GET /api/courses
 // @access  Public
@@ -268,50 +346,7 @@ exports.createCourse = async (req, res) => {
         if (section.lessons && Array.isArray(section.lessons)) {
           for (let j = 0; j < section.lessons.length; j++) {
             const lesson = section.lessons[j];
-            const lessonResult = await client.query(
-              `INSERT INTO lessons (section_id, title, content_type, order_index)
-               VALUES ($1, $2, $3, $4)
-               RETURNING id`,
-              [sectionId, lesson.title, lesson.type, j],
-            );
-
-            const lessonId = lessonResult.rows[0].id;
-
-            // Handle Quiz creation if type is 'quiz'
-            if (
-              lesson.type === "quiz" &&
-              lesson.questions &&
-              Array.isArray(lesson.questions)
-            ) {
-              const quizResult = await client.query(
-                `INSERT INTO quizzes (lesson_id, title, passing_score)
-                 VALUES ($1, $2, $3)
-                 RETURNING id`,
-                [lessonId, lesson.title, 70],
-              );
-
-              const quizId = quizResult.rows[0].id;
-
-              for (let k = 0; k < lesson.questions.length; k++) {
-                const q = lesson.questions[k];
-                await client.query(
-                  `INSERT INTO quiz_questions 
-                   (quiz_id, question, option_a, option_b, option_c, option_d, correct_answer, points, order_index)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                  [
-                    quizId,
-                    q.question,
-                    q.option_a,
-                    q.option_b,
-                    q.option_c,
-                    q.option_d,
-                    q.correct_answer.toUpperCase(),
-                    q.points || 1,
-                    k,
-                  ],
-                );
-              }
-            }
+            await persistLesson(client, sectionId, lesson, j);
           }
         }
       }
@@ -338,8 +373,16 @@ exports.updateCourse = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const { title, description, category_id, level, price, original_price, status, sections } =
-      req.body;
+    const {
+      title,
+      description,
+      category_id,
+      level,
+      price,
+      original_price,
+      status,
+      sections,
+    } = req.body;
 
     // Get current course
     const current = await client.query("SELECT * FROM courses WHERE id = $1", [
@@ -426,48 +469,8 @@ exports.updateCourse = async (req, res) => {
         if (section.lessons && Array.isArray(section.lessons)) {
           for (let j = 0; j < section.lessons.length; j++) {
             const lesson = section.lessons[j];
-            const lessonResult = await client.query(
-              `INSERT INTO lessons (section_id, title, content_type, order_index)
-               VALUES ($1, $2, $3, $4)
-               RETURNING id`,
-              [sectionId, lesson.title, lesson.type || lesson.content_type, j],
-            );
-
-            const lessonId = lessonResult.rows[0].id;
-
-            // Handle Quiz
-            if (lesson.type === "quiz" || lesson.content_type === "quiz") {
-              if (lesson.questions && Array.isArray(lesson.questions)) {
-                const quizResult = await client.query(
-                  `INSERT INTO quizzes (lesson_id, title, passing_score)
-                   VALUES ($1, $2, $3)
-                   RETURNING id`,
-                  [lessonId, lesson.title, 70],
-                );
-
-                const quizId = quizResult.rows[0].id;
-
-                for (let k = 0; k < lesson.questions.length; k++) {
-                  const q = lesson.questions[k];
-                  await client.query(
-                    `INSERT INTO quiz_questions 
-                     (quiz_id, question, option_a, option_b, option_c, option_d, correct_answer, points, order_index)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                    [
-                      quizId,
-                      q.question,
-                      q.option_a,
-                      q.option_b,
-                      q.option_c,
-                      q.option_d,
-                      q.correct_answer,
-                      q.points || 1,
-                      k,
-                    ],
-                  );
-                }
-              }
-            }
+            const type = lesson.type || lesson.content_type;
+            await persistLesson(client, sectionId, { ...lesson, type }, j);
           }
         }
       }
@@ -575,9 +578,10 @@ exports.getCourseCurriculum = async (req, res) => {
     const curriculum = await Promise.all(
       sections.rows.map(async (section) => {
         const lessonsRecords = await pool.query(
-          `SELECT id, title, content_type as type, duration, order_index, is_preview 
-           FROM lessons 
-           WHERE section_id = $1 
+          `SELECT id, title, content_type as type, text_content AS content, duration,
+                  order_index, is_preview, published
+           FROM lessons
+           WHERE section_id = $1
            ORDER BY order_index`,
           [section.id],
         );
@@ -586,15 +590,32 @@ exports.getCourseCurriculum = async (req, res) => {
           lessonsRecords.rows.map(async (lesson) => {
             if (lesson.type === "quiz") {
               const quizResult = await pool.query(
-                "SELECT id FROM quizzes WHERE lesson_id = $1",
+                "SELECT id, passing_score, attempts_allowed FROM quizzes WHERE lesson_id = $1",
                 [lesson.id],
               );
               if (quizResult.rows.length > 0) {
+                const quiz = quizResult.rows[0];
                 const questionsResult = await pool.query(
                   "SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY order_index",
-                  [quizResult.rows[0].id],
+                  [quiz.id],
                 );
-                return { ...lesson, questions: questionsResult.rows };
+                return {
+                  ...lesson,
+                  passing_score: quiz.passing_score,
+                  attempts_allowed: quiz.attempts_allowed,
+                  questions: questionsResult.rows,
+                };
+              }
+            }
+            if (lesson.type === "assignment") {
+              const assignmentResult = await pool.query(
+                `SELECT instructions, due_date, max_score AS total_marks,
+                        submission_type, status
+                 FROM assignments WHERE lesson_id = $1`,
+                [lesson.id],
+              );
+              if (assignmentResult.rows.length > 0) {
+                return { ...lesson, ...assignmentResult.rows[0] };
               }
             }
             return lesson;

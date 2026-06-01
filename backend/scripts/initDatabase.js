@@ -224,6 +224,30 @@ const initDatabase = async () => {
     `);
     console.log('✓ Resources table created');
 
+    // Certificates table — stores metadata for every generated certificate.
+    // certificate_uuid is the public-facing unique ID printed on the PDF.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS certificates (
+        id SERIAL PRIMARY KEY,
+        certificate_uuid UUID UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        completion_date TIMESTAMPTZ NOT NULL,
+        generated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        file_path TEXT,
+        UNIQUE(user_id, course_id)
+      );
+    `);
+    console.log('✓ Certificates table created');
+
+    // === Migrations for curriculum metadata enhancements ===
+    await pool.query(`ALTER TABLE lessons ADD COLUMN IF NOT EXISTS published BOOLEAN DEFAULT false;`);
+    await pool.query(`ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS attempts_allowed INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS instructions TEXT;`);
+    await pool.query(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS submission_type VARCHAR(20) DEFAULT 'file';`);
+    await pool.query(`ALTER TABLE assignments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'open';`);
+    console.log('✓ Curriculum metadata columns ensured');
+
     // Insert sample categories
     await pool.query(`
       INSERT INTO categories (name, description, icon) VALUES

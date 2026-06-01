@@ -17,6 +17,7 @@ const reviewRoutes = require('./routes/reviews'); // Import review routes
 const progressRoutes = require('./routes/progress'); // Import progress routes
 const dashboardRoutes = require('./routes/dashboard'); // Import dashboard routes
 const userRoutes = require('./routes/users'); // Import user management routes
+const certificateRoutes = require('./routes/certificates'); // Import certificate generation routes
 
 const app = express();
 
@@ -45,7 +46,8 @@ app.get('/', (req, res) => {  // Root route
       reviews: '/api/reviews',
       progress: '/api/progress',
       dashboard: '/api/dashboard',
-      users: '/api/users'
+      users: '/api/users',
+      certificates: '/api/certificates'
     }
   });
 });
@@ -61,6 +63,7 @@ app.use('/api/reviews', reviewRoutes); // Review routes
 app.use('/api/progress', progressRoutes); // Progress routes
 app.use('/api/dashboard', dashboardRoutes); // Dashboard routes
 app.use('/api/users', userRoutes); // User management routes
+app.use('/api/certificates', certificateRoutes); // Certificate generation routes
 
 // Error handling
 app.use(notFound); // Not found middleware
